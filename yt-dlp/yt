@@ -6,6 +6,7 @@
   yt subs <url>        YouTube：只探测并下载字幕
   yt bili <动作> <url> B站字幕探测与文稿底稿生成
   yt clean <file>      只清洗一个已有的 vtt/srt
+  yt render <md>       把整理好的成稿 Markdown 渲染为 docx
   yt rm <id|--all>     把临时工作目录移入废纸篓
 """
 
@@ -45,7 +46,7 @@ def cmd_doc(args):
 
     print(f"工作区 {meta['workdir']}")
     print(f"下一步 {'需要翻译（非中文）' if meta['needs_translation'] else '中文字幕，无需翻译'}"
-          f"　整理成稿后生成 docx，写完记得 yt rm {vid}")
+          f"　成稿后 yt render 出 docx，写完记得 yt rm {vid}")
     return 0
 
 
@@ -89,6 +90,14 @@ def cmd_check(args):
     print(f"yt_dlp库 {'✅ ' + module_msg if module_ok else '❌ ' + module_msg}")
     ok = ok and module_ok
 
+    try:
+        import docx  # noqa: F401
+        print("docx库   ✅ 已安装（python-docx）")
+    except Exception:
+        print("docx库   ❌ 未安装 python-docx（yt render 生成 docx 需要）。\n"
+              "         安装：python3 -m pip install -U python-docx")
+        ok = False
+
     print(f"临时区   {TMP_ROOT}（YT_TMP_ROOT 可覆盖）")
     try:
         TMP_ROOT.mkdir(parents=True, exist_ok=True)
@@ -122,6 +131,37 @@ def _output_dir():
     if env:
         return Path(env).expanduser()
     return Path.cwd() / "yt-transcript-output"
+
+
+def _safe_name(title):
+    return re.sub(r'[\\/:*?"<>|\r\n]+', "_", title).strip() or "未命名"
+
+
+def _title_from_md(path):
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.startswith("# "):
+            return line[2:].strip()
+    return None
+
+
+def cmd_render(args):
+    """把整理好的成稿 Markdown 渲染成 docx，落到成稿目录。"""
+    src = Path(args.input).expanduser()
+    if not src.exists():
+        print(f"找不到文件：{src}", file=sys.stderr)
+        return 1
+    try:
+        import docx  # noqa: F401
+    except Exception:
+        print("缺少 python-docx。安装：python3 -m pip install -U python-docx", file=sys.stderr)
+        return 1
+    title = args.title or _title_from_md(src) or src.stem
+    out = Path(args.out).expanduser() if args.out else _output_dir() / f"{_safe_name(title)}.docx"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    ret = run("render_docx.py", [str(src), "-o", str(out)])
+    if ret == 0:
+        print(f"✓ 成稿已落盘：{out}")
+    return ret
 
 
 def _trash_dir():
@@ -204,6 +244,12 @@ def main():
     p.add_argument("url")
     p.add_argument("--json", action="store_true")
     p.set_defaults(func=cmd_bili)
+
+    p = sub.add_parser("render", help="把整理好的成稿 Markdown 渲染为 docx")
+    p.add_argument("input", help="成稿 Markdown 文件路径")
+    p.add_argument("--title", default=None, help="文件名标题（默认取 md 的一级标题）")
+    p.add_argument("--out", default=None, help="指定输出 docx 路径")
+    p.set_defaults(func=cmd_render)
 
     p = sub.add_parser("rm", help="把临时工作目录移入废纸篓")
     p.add_argument("target", nargs="?", help="video_id 或视频 URL")

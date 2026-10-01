@@ -1,4 +1,0 @@
-interface:
-  display_name: "B站文稿整理"
-  short_description: "提取B站人工与AI字幕，核验现成文稿并导出 DOCX"
-  default_prompt: "Use $bilibili-transcript to turn this Bilibili video into a verified transcript DOCX."

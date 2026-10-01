@@ -51,6 +51,10 @@ TRANSCRIPT_HINT_RE = re.compile(
     re.I,
 )
 URL_RE = re.compile(r"https?://[^\s<>()\[\]，。、]+")
+# 播客平台默认区分说话人，B站 AI 字幕不区分。描述栏挂了这些链接，
+# 说明同一期内容在播客平台也有，底本质量通常更高，值得停下来问一句。
+PODCAST_HOSTS = {"xiaoyuzhoufm.com": "小宇宙"}
+
 NOISE_HOSTS = {
     "bilibili.com", "weibo.com", "x.com", "twitter.com", "douyin.com",
     "tiktok.com", "instagram.com", "youtube.com", "youtu.be", "music.163.com",
@@ -255,13 +259,37 @@ def normalize_title(title: str) -> str:
     return re.sub(r"\s+", " ", title).strip()
 
 
+def podcast_links(description: str) -> list[dict]:
+    """从描述栏挖播客平台链接。
+
+    和 transcript_candidates 不同，这里**不要求**所在行带"文字版/逐字稿"之类的字眼——
+    播客链接通常是光秃秃挂在那里的。这是判断"同一期是不是也在播客平台"最可靠的信号，
+    比拿标题去搜准得多（小宇宙的搜索接口是模糊匹配，噪音极大，不可用来做自动判定）。
+    """
+    found, seen = [], set()
+    for url in URL_RE.findall(description or ""):
+        url = clean_url(url)
+        if url in seen:
+            continue
+        host = urlparse(url).netloc.lower().removeprefix("www.")
+        for domain, label in PODCAST_HOSTS.items():
+            if host == domain or host.endswith(f".{domain}"):
+                seen.add(url)
+                found.append({"platform": label, "url": url})
+                break
+    return found
+
+
 def search_plan(title: str, owner: str, description: str, duration: int, subtitle_kind: str | None):
     candidates, hints = transcript_candidates(description)
     haystack = f"{title} {owner} {description[:1200]}"
     interview = bool(INTERVIEW_RE.search(haystack))
     long_ai = duration >= 1200 and subtitle_kind == "auto"
-    recommended = bool(candidates or hints or interview or long_ai)
+    podcasts = podcast_links(description)
+    recommended = bool(candidates or hints or podcasts or interview or long_ai)
     reasons = []
+    if podcasts:
+        reasons.append("描述栏挂了播客平台链接")
     if candidates:
         reasons.append("描述栏有现成文稿候选链接")
     if hints:
@@ -275,8 +303,9 @@ def search_plan(title: str, owner: str, description: str, duration: int, subtitl
         f'"{clean_title}" 文字版 全文 实录 逐字稿',
         f'"{owner}" "{clean_title[:36]}" 文稿',
         f'site:mp.weixin.qq.com "{clean_title[:42]}"',
+        f'site:xiaoyuzhoufm.com "{owner}"',
     ]
-    return candidates, hints, recommended, "；".join(dict.fromkeys(reasons)), queries
+    return candidates, hints, podcasts, recommended, "；".join(dict.fromkeys(reasons)), queries
 
 
 def format_duration(seconds: int) -> str:
@@ -400,7 +429,7 @@ def main() -> None:
             owner = (video.get("owner") or {}).get("name") or ""
             title = video.get("title") or bvid
             duration = int(page.get("duration") or video.get("duration") or 0)
-            candidates, hints, recommended, reason, queries = search_plan(
+            candidates, hints, podcasts, recommended, reason, queries = search_plan(
                 title, owner, description, duration, subtitle_kind
             )
 
@@ -437,6 +466,7 @@ def main() -> None:
                 "description": description,
                 "transcript_candidates": candidates,
                 "transcript_hints": hints,
+                "podcast_versions": podcasts,
                 "search_recommended": recommended,
                 "search_reason": reason,
                 "search_queries": queries,
@@ -481,6 +511,9 @@ def main() -> None:
                         print(f"文稿       {meta['transcript_path']}")
                 else:
                     print(f"字幕       没有可用字幕：{no_subtitle_reason}")
+                for item in podcasts:
+                    print(f"播客版     {item['platform']}　{item['url']}")
+                    print("           ↑ 播客平台分说话人，底本通常更好。先告诉用户，由用户决定是否改用播客版，不要自己转线。")
                 if recommended:
                     print(f"现成文稿   必查：{reason}")
                     for candidate in candidates:
