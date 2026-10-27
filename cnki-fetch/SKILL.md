@@ -109,15 +109,15 @@ cnki -f
 | 机构权限 | 必须。机构网络直连或机构 VPN，页面右上角显示「××大学图书馆」等机构名才有全文权限；没有时检索能用，AI 阅读页取不到正文 |
 | 网络 | 知网要走国内机构出口。**入口脚本会先清掉 `HTTP(S)_PROXY`／`ALL_PROXY`**，免得 shell 里导出的代理把请求送出境（知网一律回 401）；系统级全局代理／TUN 也要让 `cnki.net` 直连 |
 | 系统 | macOS 上开发与验证；Linux 应可用但未实测；Windows 不支持（用到 `fcntl`） |
-| Python | 3.10+，推荐用 [uv](https://github.com/astral-sh/uv) 建 `.venv` |
-| 浏览器 | [cloakbrowser](https://github.com/CloakHQ/CloakBrowser)（随 requirements 安装）：反检测 Chromium，Playwright 接口。首次启动自动下载内核到 `~/.cloakbrowser`（约 350 MB）；免费版同时只能开一个会话 |
+| Python | 3.10+。推荐用 [uv](https://github.com/astral-sh/uv)：环境装在本技能 `.venv`，包取自 uv 全局缓存，装过的不再下载，macOS／Linux 上以写时复制克隆，几乎不占额外磁盘 |
+| 浏览器 | [cloakbrowser](https://github.com/CloakHQ/CloakBrowser)（随 requirements 安装）：反检测 Chromium，Playwright 接口。内核缓存在 `~/.cloakbrowser`，本机所有 cloakbrowser 共用：已有对应版本就直接沿用，没有才在首次启动时自动下载（约 350 MB）；免费版同时只能开一个会话 |
 | 使用边界 | 只抓本机构有权访问的内容，遵守知网与所在机构的使用条款；按需取用，别做全库批量 |
 
 安装（在技能目录里执行）：
 
 ```bash
 uv venv .venv && uv pip install --python .venv/bin/python -r requirements.txt
-#（没有 uv：python3 -m venv .venv && .venv/bin/pip install -r requirements.txt）
+#（没有 uv：python3 -m venv .venv && .venv/bin/pip install -r requirements.txt，依赖会另下一份）
 ln -s "$PWD/cnki" /usr/local/bin/cnki    # 或 ~/.local/bin 等任一 PATH 目录；不链也可用 ./cnki
 cp .env.example .env                      # 可选：改落盘目录
 cnki --doctor                             # 自检依赖、登录态与输出目录

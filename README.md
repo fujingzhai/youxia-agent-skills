@@ -9,7 +9,7 @@
 | [cnki-fetch](cnki-fetch/SKILL.md) | 知网论文检索与全文下载：按篇名抓原版 PDF／CAJ，可另出带真·页下脚注的 DOCX；按作者、刊物、主题列文章清单 | `cnki` | `cnki --doctor` | 机构知网权限、国内网络出口 |
 | [weread-fetch](weread-fetch/SKILL.md) | 把微信读书里有权阅读的书抓成 DOCX：还原图、表、注、字体层次与生僻字 | `weread` | `weread doctor` | 微信读书账号 |
 
-两个技能都设为**手动触发**（`SKILL.md` 头部的 `disable-model-invocation: true`，Codex 对应 `agents/openai.yaml`）：在 Claude Code 里用 `/cnki-fetch`、`/weread-fetch` 调用，agent 不会自行选用。想让 agent 按需自动调用，删掉这两处设置即可。
+两个技能都设为**手动触发**（`SKILL.md` 头部的 `disable-model-invocation: true`，Codex 对应 `agents/openai.yaml`）：在 Claude Code 里用 `/cnki-fetch`、`/weread-fetch` 调用；在 Codex 里要在话中写 `$cnki-fetch`、`$weread-fetch` 点名，不点名 agent 不会选用。想让 agent 按需自动调用，删掉 `disable-model-invocation` 那行，并把 `agents/openai.yaml` 的 `allow_implicit_invocation` 改成 `true`。
 
 ## 安装（按技能单独安装，不必整库安装）
 
@@ -40,9 +40,10 @@ https://github.com/fujingzhai/youxia-agent-skills/tree/main/cnki-fetch
 
 完整步骤和自检命令都在各技能 `SKILL.md` 的「前置条件与安装」一节。agent 应主动执行自检，不要假设电脑上已装好任何工具。两个技能共同的前提：
 
-- Python 3.10+，推荐用 [uv](https://github.com/astral-sh/uv) 在技能目录里建 `.venv`；
-- [cloakbrowser](https://github.com/CloakHQ/CloakBrowser)（反检测 Chromium，随 `requirements.txt` 安装）：首次启动会自动下载约 350 MB 的浏览器内核到 `~/.cloakbrowser`；免费版同一时间只能开一个浏览器会话，**两个技能不要同时跑**；
-- 系统：macOS 上开发与验证；Linux 应可用但未实测；Windows 不支持。
+- Python 3.10+，推荐用 [uv](https://github.com/astral-sh/uv) 在技能目录里建 `.venv`：各技能环境互相独立，但包取自 uv 全局缓存，装过的不再下载，macOS／Linux 上以写时复制克隆，几乎不占额外磁盘（用 pip 则每个技能各下一份）；
+- [cloakbrowser](https://github.com/CloakHQ/CloakBrowser)（反检测 Chromium，随 `requirements.txt` 安装）：浏览器内核缓存在 `~/.cloakbrowser`，本机所有 cloakbrowser 共用——已有对应版本就直接沿用，没有才在首次启动时自动下载（约 350 MB）；免费版同一时间只能开一个浏览器会话，**两个技能不要同时跑**；
+- 系统：macOS 上开发与验证；Linux 应可用但未实测；Windows 不支持；
+- 用 Codex 时：装依赖、下载内核、访问站点都要联网，`workspace-write` 沙箱默认可能不放行网络，弹出授权时批准即可，或在 Codex 配置里设 `[sandbox_workspace_write] network_access = true`。
 
 ## 本机定制
 
