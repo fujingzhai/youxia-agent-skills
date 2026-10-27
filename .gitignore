@@ -2,5 +2,11 @@
 __pycache__/
 *.pyc
 .venv/
-yt-transcript-output/
+.env
+.lock
 *.docx
+# 运行期数据：登录态与缓存
+profiles/
+cache/
+.state/
+work/

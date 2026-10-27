@@ -1,0 +1,27 @@
+#!/bin/bash
+# 微信读书抓取入口。用法见 SKILL.md，或 weread --help
+set -euo pipefail
+
+SRC="${BASH_SOURCE[0]}"
+while [ -L "$SRC" ]; do
+  DIR="$(cd -P "$(dirname "$SRC")" && pwd)"
+  SRC="$(readlink "$SRC")"
+  [[ "$SRC" != /* ]] && SRC="$DIR/$SRC"
+done
+SKILL_DIR="$(cd -P "$(dirname "$SRC")" && pwd)"
+
+PY="$SKILL_DIR/.venv/bin/python"
+
+if [[ ! -x "$PY" ]]; then
+  echo "错误       虚拟环境缺失：$PY"
+  echo "           重建：cd $SKILL_DIR && uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -r requirements.txt"
+  exit 1
+fi
+
+# .env 里的路径设置（WEREAD_*，见 .env.example）导出给 Python 及其子进程
+[[ -f "$SKILL_DIR/.env" ]] && { set +u -a; source "$SKILL_DIR/.env"; set -u +a; }
+if [[ -n "${WEREAD_BROWSER_PY:-}" && ! -x "$WEREAD_BROWSER_PY" ]]; then
+  echo "错误       WEREAD_BROWSER_PY 指向的解释器不存在：$WEREAD_BROWSER_PY"
+  exit 1
+fi
+exec "$PY" -u "$SKILL_DIR/lib/cli.py" "$@"

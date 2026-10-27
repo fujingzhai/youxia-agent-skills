@@ -1,0 +1,27 @@
+#!/bin/bash
+# 知网全文抓取入口（默认只下原版 PDF）。用法见 SKILL.md 或 cnki --help
+set -euo pipefail
+
+# 解析软链，保证从 /usr/local/bin 调用也能定位 skill 目录
+SRC="${BASH_SOURCE[0]}"
+while [ -L "$SRC" ]; do
+  DIR="$(cd -P "$(dirname "$SRC")" && pwd)"
+  SRC="$(readlink "$SRC")"
+  [[ "$SRC" != /* ]] && SRC="$DIR/$SRC"
+done
+SKILL_DIR="$(cd -P "$(dirname "$SRC")" && pwd)"
+
+PY="$SKILL_DIR/.venv/bin/python"
+if [[ ! -x "$PY" ]]; then
+  echo "错误       虚拟环境缺失：$PY"
+  echo "           重建：cd $SKILL_DIR && uv venv .venv && uv pip install --python .venv/bin/python -r requirements.txt"
+  exit 1
+fi
+
+# 知网只认机构 IP。shell 里导出的代理变量继承下来会把请求送出境，知网一律回 401——
+# 现象像"没权限"，其实是出口不对。这里一律清掉，走机构网络直连；校外请用机构 VPN。
+unset HTTP_PROXY HTTPS_PROXY ALL_PROXY http_proxy https_proxy all_proxy
+
+# .env 里的设置（如 CNKI_OUTPUT_DIR）导出给 Python
+[[ -f "$SKILL_DIR/.env" ]] && { set +u -a; source "$SKILL_DIR/.env"; set -u +a; }
+exec "$PY" -u "$SKILL_DIR/lib/fetch.py" "$@"

@@ -1,0 +1,12 @@
+p { text-indent: 2em; text-align: justify; }
+p.bodytext { text-indent: 2em; }
+p.quote2em { margin-left: 2em; text-indent: 2em; font-family: "汉仪楷体","STKaiti"; }
+p.fnote { font-size: 0.9em; text-indent: 2em; }
+p.pic-txt { font-size: 0.85em; font-family: "STKaiti"; text-align: center; text-indent: 0; }
+p.signature { text-align: right; text-indent: 0; font-family: "STKaiti"; }
+span.font1 { font-size: 0.8em; }
+span.bold { font-weight: bold; }
+h2.chap { font-size: 1.4em; text-align: center; }
+h3.sec { font-size: 1.15em; }
+td { font-size: 0.9em; text-indent: 0; }
+p.poem-left { font-family: "STKai","楷体"; text-indent: 0em; }

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head><title>自检章</title></head>
+<body>
+  <h2 class="chap">自检章</h2>
+  <h3 class="sec">一、注释的两种写法</h3>
+  <p class="bodytext">甲式注号带 id<a href="#n1" id="n1-back"><sup>(1)</sup></a>，乙式只有 href<a href="#n2"><sup>(2)</sup></a>，
+  丙式是微信读书自己插的夹注<img alt="此注文藏在 alt 里，应转成脚注。" class="qqreader-footnote" src="../Images/note.png" />，
+  还有互指式<span class="super"><a href="#b9" id="bt9">注9</a></span>，以及注号 id 挂在空 a 上的<a id="w7"></a><a href="#m7"><span class="super">[7]</span></a>，
+  还有 EPUB3 标准写法<a epub:type="noteref" role="doc-noteref" href="#fn_1" id="fnref_1" class="noteref moofs12">[1]</a>，六种都该变成 Word 脚注。</p>
+  <p class="quote2em">此段为引文，应整体左缩进两字并用楷体，其中<span class="bold">这四个字加粗</span>，
+  <span class="font1">这句是小字</span>，还有上标<sup>甲</sup>与下标<sub>乙</sub>。</p>
+
+  <p class="poem-left">長恨此身非我有，<br />
+    何時忘卻營營？<br />
+    夜闌風靜縠紋平。</p>
+  <h3 class="sec">二、表格</h3>
+  <table>
+    <tr><th>朝代</th><th colspan="2">制度</th><th>备注</th></tr>
+    <tr><td rowspan="2">汉</td><td>中央</td><td>三公九卿</td><td>西汉沿秦</td></tr>
+    <tr><td>地方</td><td>郡国并行</td><td>东汉略变</td></tr>
+    <tr><td>唐</td><td colspan="2">三省六部</td><td>—</td></tr>
+  </table>
+
+  <h3 class="sec">三、图与图说</h3>
+  <div class="pic-div"><img alt="" class="kindle-cn-bodycontent-image-alone50-withnote" src="https://res.weread.qq.com/wrepub/epub_32608344_378" data-w="850px" data-ratio="0.671" data-w-new="570px" /></div>
+  <p class="pic-txt">图一　这是图说<br /><span class="font1">署名小字</span></p>
+  <p class="bodytext">私用区生僻字：回纥入唐先取鹈泉。</p>
+  <p class="bodytext">扩展区生僻字：𠄀𡈽𪚥，正文字体没有这几个字。</p>
+  <p class="bodytext">随文生僻字示例：<img class="kindle-cn-inline-character" src="https://res.weread.qq.com/wrepub/epub_22247793_4" alt="" />应与正文同高。</p>
+  <hr />
+  <p class="signature">某年某月于某地</p>
+
+  <p class="fnote"><a href="#n1-back" id="n1">(1)</a> 甲式注文：按 id 配对，注文里还夹着一个生僻字图<img alt="" class="s-pic" src="https://res.weread.qq.com/wrepub/epub_22247793_4" data-w="84px" data-ratio="1.2" />。</p>
+  <p class="content2a"><a href="#bt9" id="b9">注9</a>丙式：注号与注文两个 &lt;a&gt; 互指，class 无线索。</p>
+  <p class="content3"><a href="#w7" id="m7">[7]</a> 戊式：注号那侧的 id 挂在另一个空 a 上。</p>
+  <p class="fnote"><a href="#n2-back">(2)</a> 乙式注文：按回跳 href 反推配对。</p>
+  <div class="footnotes moofs16" epub:type="footnotes" role="doc-endnotes">
+  <hr />
+  <ol><li class="moofs14"><div id="fn_1" class="footnote moofs14 non-moofont" epub:type="footnote" role="doc-noteref">
+  <p class="moofs10">1．己式注文：EPUB3 标准写法，类名不止一个，末尾带回跳。<a href="#fnref_1" role="doc-backlink" class="moofs10">↺</a></p>
+  </div></li></ol>
+  </div>
+</body>
+</html>

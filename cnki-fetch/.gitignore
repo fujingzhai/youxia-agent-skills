@@ -1,0 +1,8 @@
+.venv/
+cache/
+profiles/
+.DS_Store
+.lock
+__pycache__/
+*.pyc
+.env

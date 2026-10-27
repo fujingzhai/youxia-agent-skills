@@ -1,0 +1,8 @@
+.venv/
+.state/
+.env
+profiles/
+work/
+__pycache__/
+*.pyc
+.DS_Store

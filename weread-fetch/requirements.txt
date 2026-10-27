@@ -1,0 +1,8 @@
+beautifulsoup4==4.12.3
+lxml>=5.0
+python-docx==1.1.2
+Pillow>=10.0
+fonttools>=4.50
+rookiepy>=0.5
+opencc>=1.1
+cloakbrowser>=0.5.8
