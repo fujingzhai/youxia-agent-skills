@@ -7,7 +7,7 @@
   解成「时c」这种坏字），而阅读器自己会把所有块拼好后调一次 window.atob。
   于是这里只做一件事：挂钩 window.atob，把它还原出来的整章 XHTML 抄走。
 
-本文件跑在装有 cloakbrowser 的解释器里（默认即本技能 .venv，见 lib/paths.py），只用标准库 + cloakbrowser。
+本文件跑在装有 camoufox 的解释器里（默认即本技能 .venv，见 lib/paths.py），只用标准库 + camoufox（经 lib/browser.py）。
 """
 
 from __future__ import annotations
@@ -57,17 +57,15 @@ def looks_like_css(text: str) -> bool:
 
 class Capturer:
     def __init__(self, headless: bool = True, cookies: list[dict] | None = None):
-        import cloakbrowser
-        PROFILE_DIR.mkdir(parents=True, exist_ok=True)
-        self.ctx = cloakbrowser.launch_persistent_context(
-            user_data_dir=str(PROFILE_DIR), headless=headless)
+        from lib.browser import persistent_context
+        self.ctx = persistent_context(PROFILE_DIR, headless=headless)
         if cookies:
             try:
                 self.ctx.add_cookies(cookies)
             except Exception as exc:
                 print(f"警告       Cookie 注入失败：{exc}", file=sys.stderr)
         self.page = self.ctx.pages[0] if self.ctx.pages else self.ctx.new_page()
-        self.page.add_init_script(HOOK)
+        self.page.add_init_script("mw:" + HOOK)  # 挂钩要在网页主环境，阅读器调的才是它
 
     def close(self):
         try:
@@ -84,13 +82,13 @@ class Capturer:
         body: list[str] = []
         while time.time() < deadline:
             self.page.wait_for_timeout(400)
-            items = self.page.evaluate("() => window.__wr ? window.__wr.items : []")
+            items = self.page.evaluate("mw:() => window.__wr ? window.__wr.items : []")
             body = [t for t in items if looks_like_body(t)]
             if body:
                 break
         # 正文到手后再等一拍，接住可能晚到的样式表/续块
         self.page.wait_for_timeout(1200)
-        items = self.page.evaluate("() => window.__wr ? window.__wr.items : []")
+        items = self.page.evaluate("mw:() => window.__wr ? window.__wr.items : []")
         body = [t for t in items if looks_like_body(t)]
         css = [t for t in items if looks_like_css(t)]
         return body, css, (self.page.title() or "")

@@ -17,7 +17,7 @@ def _env_path(name: str, default: Path) -> Path:
     return Path(os.path.expandvars(value)).expanduser() if value else default
 
 
-# 跑 capture.py / session.py 的解释器，须装有 cloakbrowser；默认就是本技能的 .venv
+# 跑 capture.py / session.py 的解释器，须装有 camoufox；默认就是本技能的 .venv
 BROWSER_PY = _env_path("WEREAD_BROWSER_PY", Path(sys.executable))
 # 浏览器登录态（持久化 profile）
 PROFILE_DIR = _env_path("WEREAD_PROFILE_DIR", SKILL_DIR / "profiles" / "weread")

@@ -206,5 +206,5 @@ EPUB 打包会把这类字符连同上下文列出来供人工核定。
   （HTTP 状态仍是 200，只看状态码会漏判）。
 - `/web/login/renewal` 只认浏览器当下那份 `wr_rt`，从其他浏览器抄来的快照续不动，
   会直接返回 `-2013 鉴权失败` 并把 Cookie 清空。
-- 所以会话以 cloakbrowser 的 `weread` profile 为准（路径见 `lib/paths.py`）：打开一次首页让页面自己续，
+- 所以会话以浏览器的 `weread` profile 为准（路径见 `lib/paths.py`）：打开一次首页让页面自己续，
   再把 Cookie 抄给 HTTP 接口用（`lib/session.py`）。首次可从本机 Zen/Chrome 等浏览器取种。

@@ -5,4 +5,4 @@ Pillow>=10.0
 fonttools>=4.50
 rookiepy>=0.5
 opencc>=1.1
-cloakbrowser>=0.5.8
+camoufox[geoip]==0.5.9  # 反检测 Firefox；有 browser 技能时用它的内核与入口（版本须一致）

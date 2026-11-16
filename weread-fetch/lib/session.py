@@ -2,11 +2,11 @@
 """用浏览器维持微信读书登录态，并把 Cookie 导回 .state/cookies.json。
 
 wr_skey 是短时票据，几十分钟就过期；官方的 /web/login/renewal 只认浏览器
-当下那份 wr_rt，从别处抄来的快照续不动。所以会话以 cloakbrowser 的
+当下那份 wr_rt，从别处抄来的快照续不动。所以会话以浏览器的
 weread profile 为准：打开一次首页让页面自己续，再把 Cookie 抄出来给
 HTTP 接口用。
 
-跑在装有 cloakbrowser 的解释器里（默认即本技能 .venv，见 lib/paths.py）。
+跑在装有 camoufox 的解释器里（默认即本技能 .venv，见 lib/paths.py；启动经 lib/browser.py）。
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ def seed_cookies_from_browser() -> list[dict]:
         import rookiepy
     except ImportError:
         return []
-    from zen_cookies import read_zen  # 本脚本由 cloak 的解释器直接运行，lib 目录在 sys.path 上
+    from zen_cookies import read_zen  # 本脚本由浏览器那侧的解释器直接运行，lib 目录在 sys.path 上
     for name in ("zen", "chrome", "edge", "brave", "firefox"):
         reader = read_zen if name == "zen" else getattr(rookiepy, name, None)
         if reader is None:
@@ -66,7 +66,7 @@ def export(ctx) -> list[dict]:
 
 def probe(page) -> dict:
     """在页面里同源请求书架，顺带确认登录态。"""
-    return page.evaluate("""async () => {
+    return page.evaluate("""mw:async () => {
       try {
         const vid = (document.cookie.match(/wr_vid=(\\d+)/) || [])[1] || '';
         const r = await fetch(`/web/shelf/sync?userVid=${vid}&synckey=0&lectureSynckey=0`,
@@ -84,10 +84,8 @@ def main() -> int:
     ap.add_argument("--wait", type=int, default=0, help="开窗后等待秒数，留给扫码")
     args = ap.parse_args()
 
-    import cloakbrowser
-    PROFILE_DIR.mkdir(parents=True, exist_ok=True)
-    ctx = cloakbrowser.launch_persistent_context(
-        user_data_dir=str(PROFILE_DIR), headless=not args.headed)
+    from browser import persistent_context  # lib/browser.py；lib 目录在 sys.path 上
+    ctx = persistent_context(PROFILE_DIR, headless=not args.headed)
     page = ctx.pages[0] if ctx.pages else ctx.new_page()
     try:
         page.goto("https://weread.qq.com/", wait_until="domcontentloaded", timeout=60000)
@@ -116,7 +114,7 @@ def main() -> int:
 
         if status.get("ok"):
             STATE.mkdir(exist_ok=True)
-            payload = {"source": "cloakbrowser", "synced": int(time.time()),
+            payload = {"source": "browser", "synced": int(time.time()),
                        "cookies": export(ctx)}
             COOKIE_FILE.write_text(json.dumps(payload, ensure_ascii=False, indent=1))
             COOKIE_FILE.chmod(0o600)

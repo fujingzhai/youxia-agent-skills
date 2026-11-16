@@ -44,13 +44,12 @@ class NotLoggedIn(WereadError):
 
 # 微信读书用响应体里的 errCode 报鉴权问题，HTTP 状态照样是 200
 SESSION_ERRORS = {-2012: "登录超时", -2013: "鉴权失败", -2010: "会话无效"}
-CLOAK_PY = BROWSER_PY
 
 
 def refresh_session(headed: bool = False, wait: int = 0) -> bool:
     """回浏览器续会话（wr_skey 只有浏览器自己续得动），再把 Cookie 抄回来。"""
     import subprocess
-    cmd = [str(CLOAK_PY), str(SKILL_DIR / "lib" / "session.py")]
+    cmd = [str(BROWSER_PY), str(SKILL_DIR / "lib" / "session.py")]
     if headed:
         cmd.append("--headed")
     if wait:

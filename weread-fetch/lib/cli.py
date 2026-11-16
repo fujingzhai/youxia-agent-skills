@@ -17,7 +17,7 @@ from lib.ids import reader_url  # noqa: E402
 from lib.titles import clean_author, clean_title, title_needs_review  # noqa: E402,F401
 
 SKILL_DIR = Path(__file__).resolve().parents[1]
-CLOAK_PY = paths.BROWSER_PY          # 路径都可用环境变量或 .env 覆盖，见 lib/paths.py
+BROWSER_PY = paths.BROWSER_PY          # 路径都可用环境变量或 .env 覆盖，见 lib/paths.py
 TMP_ROOT = paths.WORK_ROOT
 DEFAULT_OUT = paths.OUTPUT_DIR
 
@@ -180,7 +180,7 @@ def cmd_capture(args, info=None, work=None):
                 + (f"（全书 {len(meta['chapters'])} 章）" if meta.get("select") else ""))
 
     # -u：否则抓取进度会被块缓冲，管道里几分钟看不到一行
-    cmd = [str(CLOAK_PY), "-u", str(SKILL_DIR / "lib" / "capture.py"), "--work-dir", str(work)]
+    cmd = [str(BROWSER_PY), "-u", str(SKILL_DIR / "lib" / "capture.py"), "--work-dir", str(work)]
     if getattr(args, "headed", False):
         cmd.append("--headed")
     if getattr(args, "limit", 0):
@@ -359,13 +359,14 @@ def cmd_doctor(args):
         except Exception:
             bad += need
             say(mod, "缺失，重装 requirements.txt" if need else "缺失（可选：从浏览器取 Cookie／繁简找书）")
-    probe = subprocess.run([str(CLOAK_PY), "-c", "import cloakbrowser; print(cloakbrowser.__version__)"],
+    probe = subprocess.run([str(BROWSER_PY), "-c", "import sys; sys.path.insert(0, %r); import browser; print(browser.version())" % str(SKILL_DIR / "lib")],
                            capture_output=True, text=True)
     if probe.returncode == 0:
-        say("浏览器", f"cloakbrowser {probe.stdout.strip()}（{CLOAK_PY}）")
+        say("浏览器", f"{probe.stdout.strip()}（{BROWSER_PY}）")
     else:
         bad += 1
-        say("浏览器", f"缺失：{CLOAK_PY} 导入不了 cloakbrowser，正文抓不了")
+        why = (probe.stderr.strip().splitlines() or [f"{BROWSER_PY} 导入不了 camoufox"])[-1]
+        say("浏览器", f"缺失：{why}；正文抓不了")
     from lib import fontcover
     primary, _ = fontcover.resolve_preset("中华书局宋体")
     say("正文字体", "中华书局宋体 已装" if fontcover.coverage(primary) is not None

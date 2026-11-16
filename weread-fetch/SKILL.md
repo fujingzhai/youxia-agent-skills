@@ -8,7 +8,7 @@ description: 把微信读书的书抓成 DOCX。
 
 本目录若有 `local.md`（本机部署约定：路径、配套工具、存档），先读它；与本文冲突时以它为准。
 
-在 cloakbrowser 里挂钩阅读器 `window.atob` 取服务端 EPUB 原文，按原样还原图、表、注、字体层次后重排成 DOCX。成品当完整的书，不写出处、不留平台声明。只抓当前账号有权读的，不绕付费墙、登录、验证码。
+在反检测浏览器（Camoufox）里挂钩阅读器 `window.atob` 取服务端 EPUB 原文，按原样还原图、表、注、字体层次后重排成 DOCX。成品当完整的书，不写出处、不留平台声明。只抓当前账号有权读的，不绕付费墙、登录、验证码。
 
 - 改抓取/转换代码前读 [references/protocol.md](references/protocol.md)；各类内容怎么落 Word、规则来由读 [references/output-spec.md](references/output-spec.md)。
 
@@ -59,7 +59,7 @@ description: 把微信读书的书抓成 DOCX。
 | 账号 | 微信读书账号；只能抓该账号有权阅读的书（免费、已购或会员可读） |
 | 系统 | macOS 上开发与验证；Linux 应可用但未实测（字体目录只扫 macOS 路径）；Windows 不支持 |
 | Python | 3.10+（推荐 3.12）。推荐用 [uv](https://github.com/astral-sh/uv)：环境装在本技能 `.venv`，包取自 uv 全局缓存，装过的不再下载，macOS／Linux 上以写时复制克隆，几乎不占额外磁盘 |
-| 浏览器 | [cloakbrowser](https://github.com/CloakHQ/CloakBrowser)（随 requirements 安装）：反检测 Chromium，Playwright 接口。内核缓存在 `~/.cloakbrowser`，本机所有 cloakbrowser 共用：已有对应版本就直接沿用，没有才在首次启动时自动下载（约 350 MB）；免费版同时只能开一个会话，别与其他用它的任务并发 |
+| 浏览器 | [Camoufox](https://github.com/daijro/camoufox)（随 requirements 安装，再 `python -m camoufox fetch` 下内核，约 2.5 GB）：反检测 Firefox，Playwright 接口，开源、无并发限制。同级有 browser 技能时自动改用它的内核与入口（`lib/browser.py`）。同一登录档案同时只能被一个浏览器占用 |
 | 字体 | 默认正文「中华书局宋体」（按 Unicode 平面拆成几个字族的古籍字库，需自行安装），未装退回宋体；生僻字还原靠本机字体 cmap，装得越全还原越多 |
 | 可选 | `opencc` 命令行（书名作者转繁）；LibreOffice（排版核查） |
 | 使用边界 | 成品仅供个人学习研究，勿传播；遵守微信读书用户协议与著作权法 |
@@ -68,6 +68,7 @@ description: 把微信读书的书抓成 DOCX。
 
 ```bash
 uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -r requirements.txt
+.venv/bin/python -m camoufox fetch           # 下载浏览器内核（约 2.5 GB，只需一次）
 #（没有 uv：python3 -m venv .venv && .venv/bin/pip install -r requirements.txt，依赖会另下一份）
 ln -s "$PWD/weread" /usr/local/bin/weread    # 或 ~/.local/bin 等任一 PATH 目录；不链也可用 ./weread
 cp .env.example .env                          # 可选：改成品与缓存目录
