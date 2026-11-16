@@ -6,3 +6,4 @@ profiles/
 __pycache__/
 *.pyc
 .env
+profiles-chromium/

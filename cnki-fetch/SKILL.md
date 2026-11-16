@@ -9,7 +9,7 @@ description: 从知网检索、下载论文全文，或按作者、刊物列文�
 本目录若有 `local.md`（本机部署约定：路径、网络、配套工具），先读它；与本文冲突时以它为准。
 
 > **给 agent 的硬约束**（三条，请勿绕过）：
-> 1. **访问知网一律走本 skill 的 `cnki` 命令**。不要另开 Chrome、不要用 Chrome MCP、不要用 WebFetch 抓 kns.cnki.net——普通浏览器指纹会撞验证码，而且拿不到登录态。需要写自定义脚本时，用本 skill 的 `.venv/bin/python` 并 `import cloakbrowser`。
+> 1. **访问知网一律走本 skill 的 `cnki` 命令**。不要另开 Chrome、不要用 Chrome MCP、不要用 WebFetch 抓 kns.cnki.net——普通浏览器指纹会撞验证码，而且拿不到登录态。需要写自定义脚本时，用本 skill 的 `.venv/bin/python`，经 `lib/browser.py` 启动浏览器（`persistent_context(profile, headless=True)`）。
 > 2. **PDF／CAJ 能直接下**，`cnki <篇名>` 默认就是。撞点选码的只有「HTML阅读」那一个链接（`a.icon-html` → bar.cnki.net），下载走另外两个入口，无验证码。别把三者混为一谈。
 > 3. **核对抓下来的正文先看缓存**：`cache/<检索词>.html` 就是知网返回的原始 DOM，数一数 `sup.footNote` 就知道脚注抓全没有。不要为此去开浏览器。`cache/` 不是临时文件，别当垃圾清掉。
 
@@ -110,17 +110,18 @@ cnki -f
 | 网络 | 知网要走国内机构出口。**入口脚本会先清掉 `HTTP(S)_PROXY`／`ALL_PROXY`**，免得 shell 里导出的代理把请求送出境（知网一律回 401）；系统级全局代理／TUN 也要让 `cnki.net` 直连 |
 | 系统 | macOS 上开发与验证；Linux 应可用但未实测；Windows 不支持（用到 `fcntl`） |
 | Python | 3.10+。推荐用 [uv](https://github.com/astral-sh/uv)：环境装在本技能 `.venv`，包取自 uv 全局缓存，装过的不再下载，macOS／Linux 上以写时复制克隆，几乎不占额外磁盘 |
-| 浏览器 | [cloakbrowser](https://github.com/CloakHQ/CloakBrowser)（随 requirements 安装）：反检测 Chromium，Playwright 接口。内核缓存在 `~/.cloakbrowser`，本机所有 cloakbrowser 共用：已有对应版本就直接沿用，没有才在首次启动时自动下载（约 350 MB）；免费版同时只能开一个会话 |
+| 浏览器 | [Camoufox](https://github.com/daijro/camoufox)（随 requirements 安装，再 `python -m camoufox fetch` 下内核，约 2.5 GB）：反检测 Firefox，Playwright 接口，开源、无并发限制。同级有 browser 技能时自动改用它的内核与入口（`lib/browser.py`）。同一 profile 同时只能被一个浏览器占用 |
 | 使用边界 | 只抓本机构有权访问的内容，遵守知网与所在机构的使用条款；按需取用，别做全库批量 |
 
 安装（在技能目录里执行）：
 
 ```bash
 uv venv .venv && uv pip install --python .venv/bin/python -r requirements.txt
+.venv/bin/python -m camoufox fetch        # 下载浏览器内核（约 2.5 GB，只需一次）
 #（没有 uv：python3 -m venv .venv && .venv/bin/pip install -r requirements.txt，依赖会另下一份）
 ln -s "$PWD/cnki" /usr/local/bin/cnki    # 或 ~/.local/bin 等任一 PATH 目录；不链也可用 ./cnki
 cp .env.example .env                      # 可选：改落盘目录
-cnki --doctor                             # 自检依赖、登录态与输出目录
+cnki --doctor                             # 自检依赖、浏览器内核、登录态与输出目录
 ```
 
 新建的 `profiles/cnki` 首次检索必遇拼图滑块，自动破解偶尔不过（报「验证码未通过」）：重跑一次，或 `cnki --open` 人工滑一次。
@@ -154,6 +155,7 @@ cnki --doctor                             # 自检依赖、登录态与输出目
 | 现象 | 处理 |
 |---|---|
 | 检索无结果 | 篇名给全一点；或先 `--search-only` 用短词看候选 |
+| PDF 下载报「点选验证码」 | 知网下载风控：短时间下载多了，或全新登录态第一次下载。别连着重跑，隔一阵再来；急用就 `cnki --open` 在窗口里点一次验证 |
 | 取不到正文 | 先查出口：`env -u HTTP_PROXY -u HTTPS_PROXY -u ALL_PROXY -u http_proxy -u https_proxy -u all_proxy curl -s https://myip.ipip.net`，是境外 IP 就说明系统级代理／TUN 没让 `cnki.net` 直连。再确认机构权限：`cnki --open` 看右上角是不是「××大学图书馆」 |
 | 滑块反复不过 | `cnki --open` 人工滑一次，会话存进 `profiles/cnki` |
 | 想重排已抓的 DOCX | `cnki 篇名 --cache`，不联网，秒出 |

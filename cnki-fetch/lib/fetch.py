@@ -6,7 +6,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).parent))
-import cloakbrowser
+from browser import persistent_context, version as browser_version  # lib/browser.py：Camoufox（有 browser 技能就用它的入口）
 import captcha
 import search as SR
 import docx_builder as DB
@@ -24,8 +24,35 @@ SEARCH = "https://kns.cnki.net/kns8s/defaultresult/index?kw={}&korder=TI"
 _lock_fd = None
 
 
+class VerifyNeeded(Exception):
+    """点下载弹出了 bar.cnki.net 的点选验证码。"""
+
+
+def warm_login(ctx, timeout=12):
+    """机构 IP 自动登录在知网门户首页触发（种下 Ecp_session 等 cookie），检索页不触发。会话 cookie 关浏览器
+    就没，所以每次开浏览器先看一眼，缺了就去首页等一下；没登上多半是出口不在机构网络里，日志里能看出来。"""
+    if any(c["name"] == "Ecp_session" for c in ctx.cookies()):
+        return True
+    pg = ctx.new_page()
+    try:
+        pg.goto("https://www.cnki.net/", wait_until="domcontentloaded", timeout=45000)
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            if any(c["name"] == "Ecp_session" for c in ctx.cookies()):
+                log("机构", "已按 IP 自动登录")
+                return True
+            pg.wait_for_timeout(500)
+        log("机构", "没拿到机构登录：出口可能不是机构网络，下载会撞点选验证码")
+        return False
+    except Exception as e:
+        log("机构", f"打开知网首页失败：{str(e)[:60]}")
+        return False
+    finally:
+        pg.close()
+
+
 def acquire_lock():
-    """cloakbrowser 免费版只允许一个会话，两个 cnki 同时跑会抢同一个 profile 直接崩。
+    """同一个 profile 只能被一个浏览器占着，两个 cnki 同时跑会抢 profile 直接崩。
     浏览器起来之前先拿独占锁。"""
     global _lock_fd
     _lock_fd = open(SKILL / ".lock", "w")
@@ -34,11 +61,6 @@ def acquire_lock():
     except BlockingIOError:
         log("忙", "另一个 cnki 正在运行，等它结束再跑（浏览器只能开一个会话）")
         sys.exit(2)
-    for stale in PROFILE.glob("Singleton*"):     # 上次异常退出留下的锁
-        try:
-            stale.unlink()
-        except OSError:
-            pass
 
 
 def log(tag, msg):
@@ -254,9 +276,32 @@ def download_file(ctx, row, meta, outdir, fmt="pdf"):
             if not el:
                 log("！", f"详情页没有 {fmt.upper()} 下载按钮")
                 return None
-            with d.expect_download(timeout=90000) as di:
+            # 按钮的脚本会另开一个弹窗，下载事件可能落在当前页，也可能落在弹窗（Firefox 下常见），两头都接
+            got, popups = [], []
+            def on_download(dl):
+                got.append(dl)
+            def on_page(pg):
+                popups.append(pg)
+                pg.on("download", on_download)
+            ctx.on("page", on_page)
+            d.on("download", on_download)
+            try:
                 el.click()
-            di.value.save_as(str(out))
+                deadline = time.time() + 90
+                while not got and time.time() < deadline:
+                    d.wait_for_timeout(300)
+                    if any("bar.cnki.net/bar/verify" in (pg.url or "") for pg in popups):
+                        raise VerifyNeeded()
+                if not got:
+                    raise TimeoutError("点下载后 90 秒没有开始下载")
+                got[0].save_as(str(out))
+            finally:
+                ctx.remove_listener("page", on_page)
+                for pg in popups:
+                    try:
+                        pg.close()
+                    except Exception:
+                        pass
             # 下载完成不等于拿到原版：登录失效时知网偶尔会把错误页保存成 .pdf。
             # 立即检查文件头和 EOF，避免把损坏文件当作已完成成果，下一次也能续抓。
             if not QA.valid_original(out, fmt):
@@ -269,6 +314,11 @@ def download_file(ctx, row, meta, outdir, fmt="pdf"):
             return out
         except NET.PauseBatch:
             raise
+        except VerifyNeeded:
+            # 点选验证码（短时间下载多了、或全新登录态）：重试只会再撞，直接停
+            log("！", f"{fmt.upper()} 下载被知网点选验证码拦下：隔一阵再跑，或 cnki --open 在窗口里过一次")
+            REC.record(out, {**row, **meta}, error=f'{fmt.upper()} 下载要求点选验证')
+            return None
         except Exception as e:
             if attempt == 2:
                 log("！", f"{fmt.upper()} 下载失败（试了 3 次）：{str(e)[:50]}")
@@ -447,18 +497,22 @@ def main():
 
     if a.doctor:
         log("Python", sys.version.split()[0])
-        for m in ("cloakbrowser", "cv2", "docx", "bs4", "PIL"):
+        for m in ("camoufox", "cv2", "docx", "bs4", "PIL"):
             try:
                 __import__(m); log(m, "ok")
             except Exception as e:
                 log(m, f"缺失 {e}")
-        log("登录态", "有" if (PROFILE / "Default").exists() else "无（首次运行会自动建）")
+        try:
+            log("浏览器", browser_version())
+        except BaseException as e:
+            log("浏览器", f"缺失：{e}")
+        log("登录态", "有" if (PROFILE / "cookies.sqlite").exists() else "无（首次运行会自动建）")
         log("输出目录", str(outdir))
         return
 
     if a.open:
         acquire_lock()
-        ctx = cloakbrowser.launch_persistent_context(user_data_dir=str(PROFILE), headless=False)
+        ctx = persistent_context(PROFILE, headless=False)
         pg = ctx.pages[0] if ctx.pages else ctx.new_page()
         pg.goto("https://kns.cnki.net/kns8s/AdvSearch")
         log("有头模式", "请在窗口内完成验证/登录，完成后回车关闭")
@@ -471,8 +525,9 @@ def main():
         term = a.title or a.author or a.journal or a.subject
         PROFILE.mkdir(parents=True, exist_ok=True)
         acquire_lock()
-        ctx = cloakbrowser.launch_persistent_context(user_data_dir=str(PROFILE), headless=True,
+        ctx = persistent_context(PROFILE, headless=True,
                                                 accept_downloads=True)
+        warm_login(ctx)
         try:
             rows, total = SR.query(ctx, term, field, a.limit, a.since, a.until, a.latest,
                                    a.subject_facet, a.core, a.facets,
@@ -526,8 +581,9 @@ def main():
         return
 
     acquire_lock()
-    ctx = cloakbrowser.launch_persistent_context(user_data_dir=str(PROFILE), headless=True,
+    ctx = persistent_context(PROFILE, headless=True,
                                                 accept_downloads=True)
+    warm_login(ctx)
     try:
         if a.search_only:
             try:

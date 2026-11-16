@@ -1,4 +1,4 @@
-cloakbrowser>=0.5.8
+camoufox[geoip]==0.5.9  # 反检测 Firefox；有 browser 技能时用它的内核与入口（版本须一致）
 opencv-python-headless>=4.9
 numpy>=1.26
 beautifulsoup4>=4.12

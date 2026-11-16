@@ -11,7 +11,19 @@ import sys
 from pathlib import Path
 
 
+_ENGINE = False  # 未查过
+
+
 def _engine():
+    """本机 browser 技能的 engine（只查一次）；导入本模块时就接上，赶在别处导入 camoufox 之前。"""
+    global _ENGINE
+    if _ENGINE is not False:
+        return _ENGINE
+    _ENGINE = _find_engine()
+    return _ENGINE
+
+
+def _find_engine():
     here = os.environ.get("WEREAD_ENGINE_DIR") or str(Path(__file__).resolve().parents[2] / "browser" / "scripts")
     if (Path(here) / "engine.py").is_file():
         if here not in sys.path:
@@ -30,7 +42,8 @@ def persistent_context(profile_dir, headless: bool = True):
     from playwright.sync_api._context_manager import PlaywrightContextManager
     Path(profile_dir).mkdir(parents=True, exist_ok=True)
     mgr = Camoufox(persistent_context=True, user_data_dir=str(profile_dir), headless=headless,
-                   main_world_eval=True, locale=["zh-CN", "zh", "en-US", "en"])
+                   main_world_eval=True, locale=["zh-CN", "zh", "en-US", "en"],
+                   os={"darwin": "macos", "win32": "windows"}.get(sys.platform, "linux"))
     ctx = mgr.__enter__()
     original = ctx.close
 
@@ -57,3 +70,6 @@ def version() -> str:
     except Exception:
         raise SystemExit("camoufox 内核还没下载：.venv/bin/python -m camoufox fetch")
     return f"camoufox {md.version('camoufox')}"
+
+
+_engine()

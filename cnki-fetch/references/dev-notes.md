@@ -88,7 +88,7 @@ SKILL.md 只留使用规则；本文是通道选择的原因、版式与台账�
 3. **`a[type=reference]` 两种体例共用**：编号制 `<sup><a>[1]</a></sup>` 要转脚注，著者年制 `<citation><a>丁四新，2006</a></citation>` 必须原样留着。
 4. **图分两类**，靠「在不在段落里」区分，尺寸逻辑完全不同。
 5. **内部标记别用 `\u0000`**，残留时 python-docx 拒收 NULL 字节；用 `\ufff9`。
-6. **别并发**。cloakbrowser 免费版单会话，两个实例抢 profile 直接崩，已加 `.lock` 互斥。
+6. **别并发**。同一 profile 只能被一个浏览器占用，两个实例抢 profile 直接崩，已加 `.lock` 互斥。
 7. 报「无结果」但确实有：早期版本用固定 sleep 等页面，慢一拍就误报；现已全部改成 `wait_for_selector`，若再遇到，检查是不是新加的代码又用了 `wait_for_timeout` 当状态判据。
 
 ## 以后要批量提取正文（做知识库等）
@@ -111,7 +111,7 @@ notes = zipfile.ZipFile(f).read('word/footnotes.xml').decode()  # 注文
 ```
 cnki                 入口脚本（可软链到 PATH）
 .env                 本机设置（CNKI_OUTPUT_DIR 等），模板见 .env.example
-.lock                并发互斥锁（cloakbrowser 免费版只能开一个会话）
+.lock                并发互斥锁（同一 profile 只能开一个浏览器）
 lib/fetch.py         检索、元数据、正文、CLI
 lib/search.py        列表检索（作者/来源/主题、分面、翻页）
 lib/captcha.py       拼图滑块
@@ -125,3 +125,9 @@ cache/               HTML 与图片缓存，--cache 重排用
 待抓.md               批量清单（--to-list 写入，-f 默认读取）
 待手工下载.md          无 HTML 全文的回退清单（自动生成）
 ```
+
+## 2026-11-16 换 Camoufox（Firefox）后的下载
+
+- 「PDF 下载」按钮的脚本会另开一个弹窗，下载事件有时落在当前页、有时落在弹窗；只等当前页会白等 90 秒。`download_file` 现在两头都接，用完关掉弹窗。改后本地从「重试后 109 秒」变成「首次 11 秒」。
+- 弹窗跳到 `bar.cnki.net/bar/verify`（「请依次点击」点选码）就是下载风控：同一出口短时间下得多会被刷出来，全新登录态第一次下载也常见。直接停，不重试。
+- 机构 IP 自动登录只在门户首页 `www.cnki.net` 触发（种下 `Ecp_session` 等会话 cookie），检索页不触发；Firefox 关窗即丢会话 cookie，所以每次开浏览器 `warm_login` 先补一下。它能不能免掉点选码没测准（当天同一篇下了七八次，风控已被刷出来），别据此下结论。
